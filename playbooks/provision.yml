@@ -1,6 +1,7 @@
 ---
-- hosts: all
-  gather_facts: no
+- name: Provision VM
+  hosts: all
+  gather_facts: true
   become: true
 
   # Vagrant provison runs this file, so you don't actually need an inventory
@@ -9,6 +10,9 @@
   # Using all the data from all.yml
 
   tasks:
+    - name: Create user var
+      ansible.builtin.set_fact:
+        home_user: "{{ lookup('env', 'HOME') }}"
     - name: Allow password authentication
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
@@ -21,7 +25,7 @@
       ansible.posix.authorized_key:
         user: vagrant
         state: present
-        key: "{{ lookup('file', '{{ ansible_user_dir }}/.ssh/id_rsa.pub') }}"
+        key: "{{ lookup('file', '{{ home_user }}/.ssh/id_rsa.pub') }}"
 
   handlers:
     - name: Restart sshd
