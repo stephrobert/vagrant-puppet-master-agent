@@ -69,7 +69,7 @@ Vagrant.configure("2") do |config|
   end
   config.push.define "local-exec" do |push|
     push.inline = <<-SCRIPT
-      ansible-playbook -i .vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory playbooks/init-puppet.yml
+      ansible-playbook -i .vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory playbooks/init-puppet.yml -u vagrant
     SCRIPT
   end
 end
