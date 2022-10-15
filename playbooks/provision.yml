@@ -9,22 +9,22 @@
   # Using all the data from all.yml
 
   tasks:
-  - name: Allow password authentication
-    lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: "^PasswordAuthentication"
-      line: "PasswordAuthentication yes"
-      state: present
-    notify: restart sshd
+    - name: Allow password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PasswordAuthentication"
+        line: "PasswordAuthentication yes"
+        state: present
+      notify: restart sshd
 
-  - name: Set authorized key took from file
-    authorized_key:
-      user: vagrant
-      state: present
-      key: "{{ lookup('file', '/home/vagrant/.ssh/id_rsa.pub') }}"
+    - name: Set authorized key took from file
+      ansible.posix.authorized_key:
+        user: vagrant
+        state: present
+        key: "{{ lookup('file', '{{ ansible_user_dir }}/.ssh/id_rsa.pub') }}"
 
   handlers:
-  - name: restart sshd
-    service:
-      name: sshd
-      state: restarted
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
