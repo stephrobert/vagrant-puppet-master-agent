@@ -1,0 +1,151 @@
+---
+- name: Install puppet server
+  hosts: masters
+  vars:
+    puppet_package_url: 'http://apt.puppet.com/puppet7-release-focal.deb'
+    puppet_package_name: puppet7-release-focal
+  tasks:
+    - name: Install dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg2
+          - xz-utils
+        state: present
+        update_cache: true
+      become: true
+    - name: Check if puppet package is installed
+      ansible.builtin.command:
+        cmd: dpkg-query -W puppet
+      register: puppet_package_check_deb
+      failed_when: puppet_package_check_deb.rc > 1
+      changed_when: puppet_package_check_deb.rc == 1
+    - name: Download puppet repo package
+      ansible.builtin.get_url:
+        url: '{{ puppet_package_url }}'
+        dest: '/tmp/{{ puppet_package_name }}.deb'
+        owner: '{{ ansible_env.USER }}'
+        group: '{{ ansible_env.USER }}'
+        mode: 0755
+      when: puppet_package_check_deb.rc == 1
+    - name: Install puppet repo package
+      ansible.builtin.apt:
+        deb: '/tmp/{{ puppet_package_name }}.deb'
+      become: true
+      when: puppet_package_check_deb.rc == 1
+    - name: Install puppetserver
+      ansible.builtin.apt:
+        name: puppetserver
+        state: present
+        update-cache: true
+      become: true
+    - name: Configure server
+      ansible.builtin.lineinfile:
+        path: /etc/puppetlabs/puppet/puppet.conf
+        regex: '{{ item.regex }}'
+        line: '{{ item.line }}'
+      with_items:
+        - {regex: '^server.*', line: 'server = puppet.master0'}
+        - {regex: '^ca_server.*', line: 'ca_server = puppet.master0'}
+        - {regex: 'dns_alt_names.*', line: 'dns_alt_names = puppet'}
+      become: true
+    - name: Enable and start service puppetserver
+      ansible.builtin.service:
+        name: puppetserver
+        state: restarted
+        enabled: true
+      become: true
+    - name: Add puppet to path
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: 'PATH=(["])((?!.*?/opt/puppetlabs/server/bin).*?)(["])$'
+        line: 'PATH=\1\2:/opt/puppetlabs/server/bin/\3'
+        backrefs: true
+        state: present
+      become: true
+- name: Install puppet agent on Nodes
+  hosts: nodes
+  vars:
+    puppet_package_url: 'http://apt.puppet.com/puppet7-release-focal.deb'
+    puppet_package_name: puppet7-release-focal
+  tasks:
+    - name: Change hostname
+      ansible.builtin.hostname:
+        name: 'puppet.{{ inventory_hostname }}'
+        use: systemd
+      become: true
+    - name: Check if puppet package is installed
+      ansible.builtin.command:
+        cmd: dpkg-query -W puppet
+      register: puppet_package_check_deb
+      failed_when: puppet_package_check_deb.rc > 1
+      changed_when: puppet_package_check_deb.rc == 1
+    - name: Download puppet repo package
+      ansible.builtin.get_url:
+        url: '{{ puppet_package_url }}'
+        dest: '/tmp/{{ puppet_package_name }}.deb'
+        owner: '{{ ansible_env.USER }}'
+        group: '{{ ansible_env.USER }}'
+        mode: 0755
+      when: puppet_package_check_deb.rc == 1
+    - name: Install puppet repo package
+      ansible.builtin.apt:
+        deb: '/tmp/{{ puppet_package_name }}.deb'
+      become: true
+      when: puppet_package_check_deb.rc == 1
+    - name: Install puppet-agent
+      ansible.builtin.apt:
+        name: puppet-agent
+        state: present
+        update-cache: true
+      become: true
+    - name: Add master to puppet conf
+      ansible.builtin.lineinfile:
+        regex: '{{ item.regex }}'
+        line: '{{ item.line }}'
+        path: /etc/puppetlabs/puppet/puppet.conf
+      become: true
+      with_items:
+        - {regex: '^server =.*', line: 'server = puppet.master0' }
+        - {regex: '^environment =.*', line: 'environment = developpement' }
+    - name: Start puppet agent service
+      ansible.builtin.service:
+        name: puppet
+        enabled: true
+        state: restarted
+      become: true
+    - name: Ask to generate certificate for node on master
+      ansible.builtin.command:
+        cmd: /opt/puppetlabs/bin/puppet ssl bootstrap
+      register: test_node
+      changed_when: test_node.rc == 1
+      failed_when: test_node.rc > 1
+      become: true
+    - name: Sign certificate node on master
+      ansible.builtin.command:
+        cmd: /opt/puppetlabs/bin/puppetserver ca sign --certname puppet.{{ inventory_hostname }}
+      delegate_to: puppet.master0
+      register: register_node
+      changed_when: register_node.rc in [0, 1, 130]
+      failed_when: register_node.rc not in [0, 1, 130]
+      become: true
+      until: "register_node is not failed"
+      retries: 5
+      delay: 20
+      tags: test
+    - name: Ask to generate certificate for node on master
+      ansible.builtin.command:
+        cmd: /opt/puppetlabs/bin/puppet ssl bootstrap
+      register: test_node
+      changed_when: test_node.rc == 1
+      failed_when: test_node.rc > 1
+      become: true
+    - name: Add puppet to path
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: 'PATH=(["])((?!.*?/opt/puppetlabs/bin).*?)(["])$'
+        line: 'PATH=\1\2:/opt/puppetlabs/bin/\3'
+        state: present
+        backrefs: true
+      become: true

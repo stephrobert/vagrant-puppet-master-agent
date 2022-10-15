@@ -9,10 +9,10 @@ class apache2 ( String $content ) {
     notice("This os  ${facts['os']['name']} is not supported")
   }
   else {
-    file_line { 'sudo_rule':
-      path => '/etc/sudoers',
-      line => '%sudo ALL=(ALL) ALL',
-    }
+    # file_line { 'sudo_rule':
+    #   path => '/etc/sudoers',
+    #   line => '%sudo ALL=(ALL) ALL',
+    # }
     # Installation de apache
     package { 'apache2':
       ensure => 'present',
