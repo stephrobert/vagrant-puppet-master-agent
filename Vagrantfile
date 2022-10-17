@@ -9,7 +9,6 @@ Vagrant.configure("2") do |config|
   number_node = 1 # Number of nodes
   cpu_node = 1
   mem_node = 1024
-  config.vm.box = "generic/ubuntu2204" # Image for all installations
 
   # Compute nodes
   number_machines = number_master + number_node - 1
@@ -20,12 +19,14 @@ Vagrant.configure("2") do |config|
       when 0..number_master - 1
         nodes[i] = {
           "name" => "master#{i}",
-          "ip" => "#{base_ip_str}#{i}"
+          "ip" => "#{base_ip_str}#{i}",
+          "image" => "generic/ubuntu2204"
         }
       when number_master..number_machines
         nodes[i] = {
           "name" => "node#{i-number_master}",
-          "ip" => "#{base_ip_str}#{i}"
+          "ip" => "#{base_ip_str}#{i}",
+          "image" => "generic/ubuntu2204"
         }
     end
   end
@@ -48,6 +49,7 @@ Vagrant.configure("2") do |config|
         end
       end
       machine.vm.network "private_network", ip: node["ip"]
+      config.vm.box = node["image"]
       if (node["name"] =~ /master/)
           config.vm.synced_folder "puppet", "/etc/puppetlabs/code/environments/developpement/", type: "nfs", nfs_udp: false, mount_options: ['actimeo=2']
       else
