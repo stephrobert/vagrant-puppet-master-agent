@@ -4,4 +4,4 @@ Ce dépôt permet d'instancier un environnement de développement Puppet sur une
 
 Prérequis : `vagrant`, `libvirt` et `ansible` doivent être présent sur votre machine. 
 
-Tout est expliqué sur mon blog : [Puppet - Un environnement de développement client/serveur](/post/puppet-env-developpement/)
+Tout est expliqué sur mon blog : [Puppet - Un environnement de développement client/serveur](https://blog.stephane-robert.info/post/puppet-env-developpement/)
