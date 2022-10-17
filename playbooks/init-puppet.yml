@@ -119,9 +119,9 @@
       ansible.builtin.command:
         cmd: /opt/puppetlabs/bin/puppet ssl bootstrap
       register: test_node
-      changed_when: test_node.rc == 1
-      failed_when: test_node.rc > 1
       become: true
+      async: 120
+      poll: 0
     - name: Sign certificate node on master
       ansible.builtin.command:
         cmd: /opt/puppetlabs/bin/puppetserver ca sign --certname puppet.{{ inventory_hostname }}
@@ -131,16 +131,8 @@
       failed_when: register_node.rc not in [0, 1, 130]
       become: true
       until: "register_node is not failed"
-      retries: 5
-      delay: 20
+      delay: 120
       tags: test
-    - name: Ask to generate certificate for node on master
-      ansible.builtin.command:
-        cmd: /opt/puppetlabs/bin/puppet ssl bootstrap
-      register: test_node
-      changed_when: test_node.rc == 1
-      failed_when: test_node.rc > 1
-      become: true
     - name: Add puppet to path
       ansible.builtin.lineinfile:
         path: /etc/environment
